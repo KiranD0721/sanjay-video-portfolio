@@ -5,7 +5,7 @@ export const profile = {
   tagline: "Every frame tells a story.",
   instagram: "https://instagram.com/YOUR_INSTAGRAM",
   whatsapp: "https://wa.me/917483366045",
-  email: "hello@example.com"
+  email: "sanjus95994@gmail.com"
 };
 
 export const categories = [
