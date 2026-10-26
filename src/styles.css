@@ -1391,3 +1391,14 @@ main {
     transition-duration: .01ms !important;
   }
 }
+
+
+.shared-folder-highlight {
+  outline: 2px solid #d6b36a;
+  outline-offset: 4px;
+}
+
+.shared-folder-muted {
+  opacity: 0.35;
+  cursor: not-allowed;
+}

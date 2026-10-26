@@ -645,23 +645,15 @@ export default function App() {
 
 
         const formattedVideos = data.videos.map((video) => ({
-
           id: video.id,
-
           title: video.title || "Untitled video",
-
           description: video.description || "",
-
           category_id: video.category_id,
-
+          category_name: video.category_name || video.category?.name || "",
           url: video.drive_url || "",
-
           thumbnail: video.thumbnail_url || "",
-
           type: video.video_type || "VIDEO",
-
           client: "SANJAY · STUDIO",
-
         }));
 
 
@@ -728,11 +720,42 @@ export default function App() {
 
 
 
-  const selected = categories.find(
+  // Resolve the shared folder by ID first, then by name if the share service
+  // returns a database category ID that differs from the public portfolio slug.
+  const sharedCategoryVideo = sharedVideos[0];
+  const normalizeCategoryName = (value) =>
+    String(value || "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "");
 
+  const sharedCategory = categories.find((category) => {
+    if (category.id === sharedCategoryVideo?.category_id) return true;
+
+    const publicNames = [category.title, category.name, category.id].map(
+      normalizeCategoryName
+    );
+    const sharedNames = [
+      sharedCategoryVideo?.category_name,
+      sharedCategoryVideo?.category_id,
+    ].map(normalizeCategoryName);
+
+    return publicNames.some(
+      (name) =>
+        name &&
+        sharedNames.some((sharedName) => sharedName && name === sharedName)
+    );
+  });
+
+  const sharedCategoryId = sharedCategory?.id || null;
+
+  const selectedBase = categories.find(
     (item) => item.id === activeCategory
-
   );
+
+  const selected =
+    shareMode && selectedBase?.id === sharedCategoryId
+      ? { ...selectedBase, videos: sharedVideos }
+      : selectedBase;
 
 
 
@@ -781,36 +804,6 @@ export default function App() {
     setActiveFilter("All");
 
   };
-
-
-
-  // Critical: share mode returns its own page.
-
-  // The public folder grid below is never rendered for a share URL.
-
-  if (isShareUrl || shareMode) {
-
-    return (
-
-      <PrivateSharePage
-
-        loading={shareLoading}
-
-        error={shareError}
-
-        videos={sharedVideos}
-
-        activeVideo={activeVideo}
-
-        onPlay={setActiveVideo}
-
-        onCloseVideo={() => setActiveVideo(null)}
-
-      />
-
-    );
-
-  }
 
 
 
@@ -1265,20 +1258,29 @@ export default function App() {
                 >
 
                   <div className="section-heading">
-
                     <div>
-
                       <p className="eyebrow">EXPLORE THE WORK</p>
-
                       <h2>Portfolio folders</h2>
-
                     </div>
-
-
-
-                    <span>{categories.length} COLLECTIONS</span>
-
+                    <span>
+                      {shareMode ? "PRIVATE COLLECTION" : `${categories.length} COLLECTIONS`}
+                    </span>
                   </div>
+
+                  {shareMode && shareLoading && (
+                    <div className="share-status" role="status">
+                      <div className="loading-spinner" />
+                      <p>Verifying your private link…</p>
+                    </div>
+                  )}
+
+                  {shareMode && !shareLoading && shareError && (
+                    <div className="share-status share-error" role="alert">
+                      <h2>Portfolio unavailable</h2>
+                      <p>{shareError}</p>
+                      <p>Please contact the person who shared this link with you.</p>
+                    </div>
+                  )}
 
 
 
@@ -1290,11 +1292,20 @@ export default function App() {
 
                         type="button"
 
-                        className="folder-card"
+                        className={
+                          shareMode && category.id === sharedCategoryId
+                            ? "folder-card shared-folder-highlight"
+                            : shareMode
+                              ? "folder-card shared-folder-muted"
+                              : "folder-card"
+                        }
 
                         key={category.id}
 
-                        onClick={() => openCategory(category.id)}
+                        onClick={() => {
+                          if (shareMode && category.id !== sharedCategoryId) return;
+                          openCategory(category.id);
+                        }}
 
                         initial={{ opacity: 0, y: 18 }}
 
@@ -1364,7 +1375,9 @@ export default function App() {
 
                           <span className="folder-video-count">
 
-                            {(category.videos || []).length} VIDEOS
+                            {shareMode && category.id === sharedCategoryId
+                            ? sharedVideos.length
+                            : (category.videos || []).length} VIDEOS
 
                           </span>
 
