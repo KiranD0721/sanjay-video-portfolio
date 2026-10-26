@@ -105,6 +105,8 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const [copiedLink, setCopiedLink] = useState(false);
+  const [revokingLinkId, setRevokingLinkId] = useState("");
 
   const categoryVideos = useMemo(
     () => videos.filter((video) => video.category_id === shareCategory),
@@ -193,6 +195,7 @@ export default function AdminDashboard() {
     setSelectedVideoIds([]);
     setGeneratedLink("");
     setGeneratedShareLinkId("");
+    setCopiedLink(false);
   }, [shareCategory]);
 
   async function loadDashboard() {
@@ -390,6 +393,7 @@ export default function AdminDashboard() {
 
       setGeneratedLink(url);
       setGeneratedShareLinkId(data.share_link_id);
+      setCopiedLink(false);
       setMessage(
         `Share link created for ${data.video_count ?? selectedVideoIds.length} video(s). It expires in 48 hours.`
       );
@@ -403,12 +407,24 @@ export default function AdminDashboard() {
   async function handleCopyLink(url) {
     if (!url) return;
 
+    setMessage("");
+    setErrorMessage("");
+    setCopiedLink(false);
+
     try {
+      if (!navigator.clipboard?.writeText) {
+        throw new Error("Clipboard access is unavailable in this browser.");
+      }
+
       await navigator.clipboard.writeText(url);
-      setMessage("Share link copied to clipboard.");
+      setCopiedLink(true);
+      setMessage("Copied! The private share link is on your clipboard.");
       setErrorMessage("");
-    } catch {
-      setErrorMessage("Automatic copy failed. Select the link field and copy it manually.");
+    } catch (err) {
+      setCopiedLink(false);
+      setErrorMessage(
+        "Could not copy automatically. Click the link field, select the URL, and copy it manually."
+      );
     }
   }
 
@@ -423,6 +439,7 @@ export default function AdminDashboard() {
     }
 
     setLoading(true);
+    setRevokingLinkId(linkId);
     setMessage("");
     setErrorMessage("");
 
@@ -445,6 +462,7 @@ export default function AdminDashboard() {
       setErrorMessage(`Could not revoke link: ${err.message}`);
     } finally {
       setLoading(false);
+      setRevokingLinkId("");
     }
   }
 
@@ -829,8 +847,14 @@ export default function AdminDashboard() {
                   type="button"
                   style={styles.secondaryButton}
                   onClick={() => handleCopyLink(generatedLink)}
+                  disabled={!generatedLink}
+                  style={{
+                    ...styles.secondaryButton,
+                    borderColor: copiedLink ? "#5e9d78" : "#555",
+                    color: copiedLink ? "#a8e6bd" : "#fff",
+                  }}
                 >
-                  Copy link
+                  {copiedLink ? "✓ Copied!" : "Copy link"}
                 </button>
 
                 <button
@@ -838,8 +862,13 @@ export default function AdminDashboard() {
                   style={styles.secondaryButton}
                   disabled={loading || !generatedShareLinkId}
                   onClick={() => handleRevokeLink(generatedShareLinkId)}
+                  style={{
+                    ...styles.secondaryButton,
+                    borderColor: revokingLinkId === generatedShareLinkId ? "#a84e4e" : "#555",
+                    color: revokingLinkId === generatedShareLinkId ? "#ffb6b6" : "#fff",
+                  }}
                 >
-                  Revoke link
+                  {revokingLinkId === generatedShareLinkId ? "Revoking…" : "Revoke link"}
                 </button>
               </div>
             </div>
